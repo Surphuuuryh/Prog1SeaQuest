@@ -67,6 +67,30 @@
 #define LARGURA_MERGULHADOR  5
 #define LARGURA_NAVIO        2
 
+//Onde criar o .wav para os soms.
+#ifdef _WIN32
+    #define PREF ""
+#else
+    #define PREF "/tmp/"
+#endif
+
+//Comando de áudio caso não seja windows.
+#ifndef _WIN32
+char audio_player[80] = "";
+#endif
+
+//Nome dos .wav.
+#define WAV_COLETA       PREF "sq_coleta.wav"
+#define WAV_RESGATE      PREF "sq_resgate.wav"
+#define WAV_DANO         PREF "sq_dano.wav"
+#define WAV_MORTE        PREF "sq_morte.wav"
+#define WAV_PONTUOU      PREF "sq_pontuou.wav"
+#define WAV_TIRO_INIMIGO PREF "sq_tiro_inimigo.wav"
+#define WAV_TIRO         PREF "sq_tiro.wav"
+
+//Byterate dos áudios.
+#define TAXA 11025
+
 const wchar_t *MERGULHADOR1[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"O<-<"};
 
@@ -98,6 +122,7 @@ typedef struct { int x, y, dx, cor, ativo; } Peixe;
 typedef struct { int x, y, dx, cor, ativo; } Mergulhador;
 typedef struct { int x, y, dx, cor, ativo; } Navio;
 typedef struct { int x, y, dx, cor, ativo, dono;} Tiro;
+typedef struct { int freq, ms;} Nota;
 
 
 Submarino_player player = {(LARGURA - LARGURA_SUBMARINO) / 2, 0, 3, TEMPO_MAXIMO_OXIGENIO, 0, 0, COR_SUBMARINO_PLAYER};
@@ -115,7 +140,7 @@ int velocidade_navio;
 int game_over;
 int aguardando_comecar;
 int frame;
-int som_ligado=1;
+int som_ligado = 1;
 int ativo;
 int direcao;
 int recorde = 0;
@@ -180,6 +205,141 @@ void por_texto(int x, int y, const char *texto, int c_cor) {
     for (int i = 0; texto[i] != '\0'; i++) {
         por(x + i, y, texto[i], c_cor);
     }
+}
+
+/*------------------------SISTEMA DE ÁUDIO-----------------------*/
+
+void escreve_wav(const char *path, const unsigned char *dados, int n) {
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+
+    int taxa = TAXA, byterate = TAXA, sub1 = 16, datalen = n, riff = 36 + n;
+    short fmt = 1, canais = 1, blockalign = 1, bits = 8;
+
+    fwrite("RIFF", 1, 4, f);
+    fwrite(&riff, 4, 1, f);
+    fwrite("WAVE", 1, 4, f);
+
+    fwrite("fmt ", 1, 4, f); fwrite(&sub1, 4, 1, f);
+    fwrite(&fmt, 2, 1, f);  fwrite(&canais, 2, 1, f);
+    fwrite(&taxa, 4, 1, f); fwrite(&byterate, 4, 1, f);
+    fwrite(&blockalign, 2, 1, f); fwrite(&bits, 2, 1, f);
+
+    fwrite("data", 1, 4, f); fwrite(&datalen, 4, 1, f);
+    fwrite(dados, 1, n, f);
+
+    fclose(f);
+}
+
+void gera_som(const char *path, const Nota *ns, int qtd) {
+    static unsigned char buf[TAXA * 2];
+    int n = 0;
+    
+    for (int i = 0; i < qtd; i++) {
+        int amostras = ns[i].ms * TAXA / 1000;
+        int meio = ns[i].freq > 0 ? (TAXA / ns[i].freq) / 2 + 1 : 1;
+        
+        for (int s = 0; s < amostras && n < (int) sizeof(buf); s++, n++) {
+
+            if (ns[i].freq == 0) {
+                buf[n] = 128;
+            }
+            else {
+                if (qtd == 5) {
+                    buf[n] = ((s / meio) & 1) ? 130 : 126;
+                }
+                else {
+                    buf[n] = ((s / meio) & 1) ? 136 : 118;
+                }
+            }
+        }
+    }
+    
+    escreve_wav(path, buf, n);
+}
+
+void montar_sons(void) {
+    Nota Tiro_Inimigo[] = {
+        {1467, 28}, {1266, 28}, {999, 15}, {707, 7}, {707, 8}
+    };
+    gera_som(WAV_TIRO_INIMIGO, Tiro_Inimigo, 5);
+
+    Nota Pontuou[] = {
+        {784, 35}, {1046, 50}, {1318, 55}
+    };
+    gera_som(WAV_PONTUOU, Pontuou, 3);
+
+    Nota Dano[] = {
+        {2196, 6}, {302, 6}, {1777, 6}, {452, 6}, {2006, 6},
+        {351, 6}, {1706, 6}, {497, 6}, {1512, 6}, {688, 6},
+        {1809, 6}, {393, 6}, {1595, 6}, {594, 6}, {1204, 6},
+        {903, 15}, {853, 16}, {777, 17}, {693, 18}, {622, 19},
+        {559, 20}
+    };
+    gera_som(WAV_DANO, Dano, 21);
+
+    Nota Morte[] = {
+        {2204, 10}, {312, 10}, {1805, 10}, {456, 10}, {2002, 10},
+        {353, 10}, {1701, 10}, {505, 10}, {1501, 10}, {707, 10},
+        {1902, 10}, {403, 10}, {1606, 10}, {606, 10}, {1201, 10},
+        {652, 25}, {804, 25}, {951, 25}, {1111, 35}, {1251, 40},
+        {1404, 45}, {1552, 50}, {1711, 55}, {1858, 60}
+    };
+    gera_som(WAV_MORTE, Morte, 24);
+
+    Nota Resgate[] = {
+        {523, 70}, {659, 70}, {784, 70}, {1046, 90}, {1318, 90},
+        {1046, 70}, {1568, 120}, {1766, 120}, {2093, 350}
+    };
+    gera_som(WAV_RESGATE, Resgate, 9);
+
+    Nota Coleta[] = {
+        {523, 10}, {659, 10}, {784, 10}, {1046, 15}, {1318, 15},
+        {1046, 10}, {1568, 20}, {1760, 20}, {2093, 45}
+    };
+    gera_som(WAV_COLETA, Coleta, 9);
+
+    Nota Tiro[] = {
+        {1467, 18}, {1266, 18}, {999, 18}, {707, 18}
+    };
+    gera_som(WAV_TIRO, Tiro, 4);
+}
+
+#ifndef _WIN32
+void detecta_player(void) {
+    const char *bin[]  = {
+        "paplay", "aplay", "play", "ffplay"
+    };
+
+    const char *tmpl[] = {
+        "paplay", "aplay -q -N", "play -q",             
+        "ffplay -nodisp -autoexit -loglevel quiet"
+    };
+
+    for (int i = 0; i < 4; i++) {
+        char chk[64];
+
+        snprintf(chk, sizeof chk, "command -v %s >/dev/null 2>&1", bin[i]);
+
+        if (system(chk) == 0) {
+            snprintf(audio_player, sizeof audio_player, "%s", tmpl[i]);
+            return;
+        }
+    }
+    som_ligado = 0;
+}
+#endif
+
+void toca(const char *arq) {
+    if (!som_ligado) return;
+#ifdef _WIN32
+    PlaySound(arq, NULL, SND_FILENAME | SND_ASYNC | SND_NODEFAULT);
+#else
+    if (!audio_player[0]) return;
+    char cmd[160];
+    snprintf(cmd, sizeof cmd, "%s %s >/dev/null 2>&1 &", audio_player, arq);
+    system(cmd);
+#endif
 }
 
 /*------------------------SISTEMA DE PONTUACAO---------------------*/
@@ -588,6 +748,7 @@ void disparar_tiro_player(){
                 tiros[i].dono = 1;
                 tiros[i].cor = COR_PADRAO;
                 tiros[i].ativo = 1;
+                toca(WAV_TIRO);
             }
             else{
                 tiros[i].x = player.x + LARGURA_SUBMARINO - 1;
@@ -596,6 +757,7 @@ void disparar_tiro_player(){
                 tiros[i].dono = 1;
                 tiros[i].cor = COR_PADRAO;
                 tiros[i].ativo = 1;
+                toca(WAV_TIRO);
             }
             break;
         }
@@ -675,6 +837,11 @@ int main() {
     direcao = 1;
     aguardando_comecar = 0;
     game_over = 0;
+
+    #ifndef _WIN32
+    detecta_player();
+    #endif
+    montar_sons();
 
     while (!game_over) {
         comandos();
