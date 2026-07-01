@@ -36,7 +36,7 @@
 #define MAX_SUBMARINOS_INIMIGOS_FINAL    6
 #define MAX_PEIXES_FINAL                 12
 #define MAX_INIMIGOS_FINAL               13 /*a soma peixes+submarinos+navio*/
-
+#define MAX_TIROS                        20
 #define TEMPO_MAXIMO_OXIGENIO            60
 
 #define ALTURA_SPAWN_1                      4
@@ -82,7 +82,7 @@ typedef struct { int x, y, dx, tempo_recarga, cor, ativo; } Submarino_inimigo;
 typedef struct { int x, y, dx, cor, ativo; } Peixe;
 typedef struct { int x, y, dx, cor, ativo; } Mergulhador;
 typedef struct { int x, y, dx, cor, ativo; } Navio;
-typedef struct { int x, y, dx, cor, ativo, dano;} Tiro;
+typedef struct { int x, y, dx, cor, ativo, dono;} Tiro;
 
 
 Submarino_player player;
@@ -90,7 +90,7 @@ Submarino_inimigo submarino_inimigo[12];
 Peixe peixe[12];
 Mergulhador mergulhador[3];
 Navio navio;
-Tiro tiro;
+Tiro tiros[MAX_TIROS];
 
 
 int score;
@@ -159,13 +159,77 @@ void por(int x, int y, char c, int c_cor) {
     if (x < 0 || x >= LARGURA || y < 0 || y >= ALTURA) return;
     tela[y][x] = c;
     fgc[y][x]  = c_cor;}
-/*------------------------------------------------------*/
+
+/*------------------------SISTEMA DE TIROS---------------------*/
+
+void mover_tiros(){ // Concluído
+    for (int i=0; i<MAX_TIROS; i++){
+        if (tiros[i].ativo == 1){
+            tiros[i].x += tiros[i].dx;
+        }
+    }
+}
+void colisoes_tiros(){ // falta adicionar pontuação quando tiver colisões, além de chamar a função de recomeço se o player for atingido
+    for (int i=0; i<MAX_TIROS; i++){
+        if (tiros[i].ativo){ // Verifica se o tiro ta ativo
+            if (tiros[i].dono == 1){ // Se o tiro for do player
+                for (int c=0; c<MAX_PEIXES_FINAL; c++){
+                    if (peixe[c].ativo){
+                        if ((tiros[i].x == peixe[c].x && tiros[i].y == peixe[c].y) || (tiros[i].x == (peixe[c].x + LARGURA_PEIXE-1) && tiros[i].y == peixe[c].y)){
+                            tiros[i].ativo = 0;
+                        }
+                    }
+                }
+                    for (int c=0; c<MAX_SUBMARINOS_INIMIGOS_FINAL; c++){
+                        if (submarino_inimigo[c].ativo){
+                            if ((tiros[i].x == submarino_inimigo[c].x && tiros[i].y == submarino_inimigo[c].y) || (tiros[i].x == submarino_inimigo[c].x + LARGURA_SUB_INIMIGO && tiros[i].y == submarino_inimigo[c].y)){
+                                tiros[i].ativo = 0;
+                            }
+                        }
+                    }
+                }
+            else if (tiros[i].dono == 0){ // Se o tiro for do submarino inimigo
+                if (tiros[i].x == player.x && tiros[i].y == player.y){
+                        tiros[i].ativo = 0; // e provavelmente vamos chamar a função que reinicia o game
+                    } 
+                }
+            }
+    }
+}
+void remover_tiros(){ // concluído
+    for (int i=0; i<MAX_TIROS; i++){
+        if (tiros[i].ativo){
+            if (tiros[i].x <= 0 || tiros[i].x >= LARGURA){
+                tiros[i].ativo = 0;
+            }
+        }
+    }
+}
+/*------------------------SISTEMA DE CONTROLES------------------------------*/
 void mover_submarino(int dx, int dy){
     if (player.x + dx >= 0 && player.x + dx < LARGURA - LARGURA_SUBMARINO){player.x += dx;}
     if (player.y + dy >= 0 && player.y + dy < ALTURA - 1){player.y += dy;}  
 }
 
-void disparar_tiro(){
+void disparar_tiro_player(){
+    for (int i=0; i<MAX_TIROS; i++){
+        if (tiros[i].ativo == 0){
+            if (direcao == 0){ // esquerda
+                tiros[i].x = player.x;
+                tiros[i].y = player.y;
+                tiros[i].dx = direcao;
+                tiros[i].dono = 1;
+                tiros[i].ativo = 1;
+            }
+            else{ // direita
+                tiros[i].x = player.x + LARGURA_SUBMARINO - 1;
+                tiros[i].y = player.y;
+                tiros[i].dx = direcao;
+                tiros[i].dono = 1;
+                tiros[i].ativo = 1;
+            }
+        }
+    }
 }
 
 void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codigo)
@@ -176,11 +240,11 @@ void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codig
    
     if (cima){mover_submarino(0, -1);}
     if (baixo){mover_submarino(0, 1);}
-    if (esquerda){mover_submarino(-1, 0);}
-    if (direita){mover_submarino(1, 0);}
-    // if (GetAsyncKeyState(VK_SPACE) & 0x8000){} Botar função tiro
+    if (esquerda){mover_submarino(-1, 0); direcao = -1;}
+    if (direita){mover_submarino(1, 0); direcao = 1;}
+    if (GetAsyncKeyState(VK_SPACE) & 0x8000){disparar_tiro_player();}
 }
-
+/*------------------------SISTEMA DE SPAWN-----------------------*/
 
 void mergulhadores_spawn_posicao (void) {
     for (int  i = 0; i < MAX_MERGULHADORES; i++)
