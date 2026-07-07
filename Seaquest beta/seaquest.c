@@ -153,7 +153,7 @@ int fgc[ALTURA][LARGURA];
 char saida[ALTURA * LARGURA * 24 + 1024];
 int tempo_peixe = 0;
 #ifdef _WIN32
-
+void reset(void);
 void restaurar_terminal(void) { printf("\033[?25h\033[0m"); fflush(stdout); }
 
 void preparar_terminal(void) {
@@ -917,7 +917,7 @@ void mover_peixes(void){
 void colisoes_peixes(void) { // Falta colocar a função que remove uma vida e reseta a partida
     for (int i = 0; i < MAX_PEIXES_FINAL; i++) {
         if (peixe[i].ativo && player_colidiu_com_alvo(peixe[i].x, peixe[i].y, LARGURA_PEIXE)) {
-            game_over = 1;// aqui
+            player_perde_vida();
         }
     }
 }
@@ -931,7 +931,19 @@ void sistema_peixes(){
     colisoes_peixes();
   
 }
-
+/*--------------------------12. SISTEMA DE RESET---------------------*/
+void player_perde_vida(void){
+    player.vidas -= 1;
+    if (player.vidas < 0){game_over = 1;}
+    player.x = 38;
+    player.y = 0;
+    inicializar_oxigenio();  // Reseta oxigênio e contador_oxigenio
+    for (int i = 0; i < MAX_MERGULHADORES; i++) mergulhador[i].ativo = 0; /*limpa todos os inimigos da tela*/
+    for (int i = 0; i < MAX_PEIXES_FINAL; i++) peixe[i].ativo = 0;
+    for (int i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++) submarino_inimigo[i].ativo = 0;
+    for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
+    frame=0;
+}
 
 /*-----------------------MAIN-------------------------*/
 int main() {
