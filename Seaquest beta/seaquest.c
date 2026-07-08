@@ -55,8 +55,11 @@
 #define COLUNA_OXIGENIO_HUD              50
 
 #define ALTURA_SPAWN_1                      4
+#define ALTURA_SPAWN_12                     6
 #define ALTURA_SPAWN_2                      8
+#define ALTURA_SPAWN_22                     10
 #define ALTURA_SPAWN_3                      12
+#define ALTURA_SPAWN_32                     14
 #define ALTURA_SPAWN_4                      16
 #define ALTURA_SPAWN_NAVIO                  18
 #define ALTURA_DE_TODOS_PERSONAGENS         1
@@ -67,8 +70,10 @@
 #define LARGURA_MERGULHADOR  5
 #define LARGURA_NAVIO        2
 
-#define DELAY_PEIXE 10
-
+#define DELAY_PEIXE 40
+#define DELAY_SUB_INIMIGO 60
+#define DELAY_TIRO_INIMIGO 40
+#define DELAY_TIRO_INIMIGO2 50
 //Onde criar o .wav para os soms.
 #ifdef _WIN32
     #define PREF ""
@@ -152,8 +157,11 @@ char tela[ALTURA][LARGURA];
 int fgc[ALTURA][LARGURA];
 char saida[ALTURA * LARGURA * 24 + 1024];
 int tempo_peixe = 0;
+int tempo_sub_inimigo = 0;
+int delay_tiro_inimigo = 0;
+int delay_tiro_inimigo2 = 0;
 #ifdef _WIN32
-void reset(void);
+void player_perde_vida(void);
 void restaurar_terminal(void) { printf("\033[?25h\033[0m"); fflush(stdout); }
 
 void preparar_terminal(void) {
@@ -719,6 +727,7 @@ void colisoes_tiros(){
         else if (tiros[i].dono == 0){
             if (tiro_acertou_alvo(&tiros[i], player.x, player.y, LARGURA_SUBMARINO)){
                 tiros[i].ativo = 0;
+                player_perde_vida();
             }
         }
     }
@@ -800,7 +809,7 @@ void mover_mergulhadores(void)
     {
         if (mergulhador[i].ativo == 1)
         {
-            if(frame % 2){
+            if(frame % 3){
             mergulhador[i].x += mergulhador[i].dx;
                 if (mergulhador[i].x < 0 || mergulhador[i].x >= LARGURA)
                 {
@@ -929,10 +938,109 @@ void sistema_peixes(){
     }
     mover_peixes();
     colisoes_peixes();
-  
+}
+/*-----------------5. SISTEMA DE SUBMARINOS INIMIGOS---------------------*/
+void gerar_submarinos_inimigos(){
+     for (int  i = 0; i < MAX_PEIXES_FINAL; i++)
+    {
+        if (!submarino_inimigo[i].ativo)
+        {
+            submarino_inimigo[i].ativo=1;
+            submarino_inimigo[i].cor= COR_SUBMARINO_INIMIGO; 
+            
+            if(rand()%2==0){
+                submarino_inimigo[i].x=0; //spawn esquerda
+                submarino_inimigo[i].dx=1; //direção = direita
+            }
+            else{
+                submarino_inimigo[i].x=LARGURA-LARGURA_SUB_INIMIGO; //spawn direita
+                submarino_inimigo[i].dx=-1; //direção = esquerda
+            
+            }
+
+            submarino_inimigo[i].y= (rand() % 3)+1; 
+            if(submarino_inimigo[i].y==1){         
+                submarino_inimigo[i].y = ALTURA_SPAWN_12;}
+
+            else if(submarino_inimigo[i].y==2){
+                submarino_inimigo[i].y = ALTURA_SPAWN_22;}
+            
+            else if(submarino_inimigo[i].y==3){
+                submarino_inimigo[i].y = ALTURA_SPAWN_32;}
+            break;
+        }
+    }
+}
+void mover_submarinos_inimigos(){
+    for (int  i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++){
+        if(submarino_inimigo[i].ativo){
+            if(frame % 2){
+                submarino_inimigo[i].x+=submarino_inimigo[i].dx;
+                if(submarino_inimigo[i].x<0 || submarino_inimigo[i].x>=LARGURA){
+                    submarino_inimigo[i].ativo=0;
+                }
+            }
+        }
+    }
+}
+void colisoes_sub_inimigos(void) { // Falta colocar a função que remove uma vida e reseta a partida
+    for (int i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++) {
+        if (submarino_inimigo[i].ativo && player_colidiu_com_alvo(submarino_inimigo[i].x, submarino_inimigo[i].y, LARGURA_PEIXE)) {
+            player_perde_vida();
+        }
+    }
+}
+void disparar_tiro_inimigo(){
+    for (int c=0; c<MAX_SUBMARINOS_INIMIGOS_FINAL; c++){
+        if (submarino_inimigo[c].ativo){
+            for (int i=0; i<MAX_TIROS; i++){
+                if (tiros[i].ativo == 0){
+                    if (submarino_inimigo[c].dx < 0){
+                        tiros[i].x = submarino_inimigo[c].x;
+                        tiros[i].y = submarino_inimigo[c].y;
+                        tiros[i].dx = -1;
+                        tiros[i].dono = 0; // tiros.dono = 0 indica ser do inimigo, se for =1 quer dizer que é do player
+                        tiros[i].cor = COR_PADRAO;
+                        tiros[i].ativo = 1;
+                        toca(WAV_TIRO);
+                    }
+                    else{
+                        tiros[i].x = submarino_inimigo[c].x + LARGURA_SUB_INIMIGO - 1;
+                        tiros[i].y = submarino_inimigo[c].y;
+                        tiros[i].dx = 1;
+                        tiros[i].dono = 0;
+                        tiros[i].cor = COR_PADRAO;
+                        tiros[i].ativo = 1;
+                        toca(WAV_TIRO);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+void sistema_sub_inimigos(){
+    tempo_sub_inimigo++;
+    delay_tiro_inimigo++;
+    delay_tiro_inimigo2++;
+    if (tempo_sub_inimigo >= DELAY_SUB_INIMIGO){
+        tempo_sub_inimigo = 0;
+        gerar_submarinos_inimigos();
+    }
+    mover_submarinos_inimigos();
+    colisoes_sub_inimigos();
+    if (delay_tiro_inimigo >= DELAY_TIRO_INIMIGO){
+        delay_tiro_inimigo = 0;
+        disparar_tiro_inimigo();
+    }
+    if (delay_tiro_inimigo2 >= DELAY_TIRO_INIMIGO2){
+        delay_tiro_inimigo = 0;
+        delay_tiro_inimigo2 = 0;
+        disparar_tiro_inimigo();
+    }
 }
 /*--------------------------12. SISTEMA DE RESET---------------------*/
-void player_perde_vida(void){
+void player_perde_vida(){
     player.vidas -= 1;
     if (player.vidas < 0){game_over = 1;}
     player.x = 38;
@@ -963,6 +1071,7 @@ int main() {
     while (!game_over) {
         sistema_peixes();
         sistema_mergulhadores();
+        sistema_sub_inimigos();
         comandos();
         mover_tiros();
         colisoes_tiros();
