@@ -111,18 +111,6 @@ Depois execute:
 | `Espaço` | Dispara tiro                     |
 | `Q`      | Encerra o jogo                   |
 
-
-## Observações importantes
-
-Este projeto ainda está em desenvolvimento. Algumas partes podem estar incompletas ou em fase de teste, como:
-
-* movimentação completa de peixes;
-* movimentação completa de submarinos inimigos;
-* geração automática de inimigos;
-* sistema completo de fases e progressão de dificuldade;
-* colisões completas entre jogador e inimigos;
-* ajustes finos de balanceamento e jogabilidade.
-
 ## Autores
 
 Projeto desenvolvido para fins acadêmicos/práticos, com foco em programação em linguagem C e desenvolvimento de jogos simples no terminal.
