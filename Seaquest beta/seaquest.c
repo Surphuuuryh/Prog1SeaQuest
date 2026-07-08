@@ -22,7 +22,7 @@
 #define COR_AGUA                 20  /*azul3*/
 #define COR_ALGAS                22  /*verde escuro*/
 #define COR_AREIA                102 /*cinza53*/
-#define COR_MERGULHADOR          26  /*DodgerBlue3*/
+#define COR_MERGULHADOR          86  /*Aquamarine1*/
 #define COR_SUBMARINO_INIMIGO    102 /*cinza53*/
 #define COR_NAVIO_INIMIGO        102 /*cinza53*/
 #define COR_PEIXE_1              2   /*verde(sistema)*/
@@ -31,7 +31,7 @@
 #define COR_PEIXE_4              166 /*laranja escuro3*/
 #define COR_SUPERFICIE  69        /*cornflowerBlue*/
 
-#define MAX_MERGULHADORES                3
+#define MAX_MERGULHADORES                6
 #define MAX_PEIXES_INICIAL               5
 #define MAX_SUBMARINOS_INIMIGOS_INICIAL  0
 #define MAX_SUBMARINOS_INIMIGOS_FINAL    6
@@ -51,8 +51,11 @@
 #define PONTOS_MERGULHADOR_RESGATADO     50
 #define PONTOS_MERGULHADOR_ENTREGUE      100
 #define BONUS_MERGULHADORES_COMPLETO     300
+#define PONTOS_PARA_NOVO_TIPO_PEIXE      3000
+#define QUANTIDADE_TIPOS_PEIXE           4
 #define LINHA_HUD                        (ALTURA - 1)
 #define LINHA_AREIA                      (ALTURA - 2)
+#define COLUNA_VIDAS_HUD                 41
 #define COLUNA_OXIGENIO_HUD              50
 #define COR_FUNDO_HUD 0
 
@@ -443,6 +446,13 @@ void desenhar_pontuacao(int x, int y) {
     por_texto(x, y, texto_pontuacao, COR_PADRAO);
 }
 
+void desenhar_vidas(int x, int y) {
+    char texto_vidas[12];
+
+    sprintf(texto_vidas, "Vidas:%d", player.vidas);
+    por_texto(x, y, texto_vidas, COR_PADRAO);
+}
+
 /*------------------------2. SISTEMA DE OXIGENIO---------------------*/
 
 int limitar_oxigenio(int valor) {
@@ -566,12 +576,12 @@ void desenhar_player(void) {
 }
 
 void desenhar_peixes(void) {
-    const int cores_peixes[4] = {COR_PEIXE_1, COR_PEIXE_2, COR_PEIXE_3, COR_PEIXE_4};
+    const int cores_peixes[QUANTIDADE_TIPOS_PEIXE] = {COR_PEIXE_1, COR_PEIXE_2, COR_PEIXE_3, COR_PEIXE_4};
 
     for (int i = 0; i < MAX_PEIXES_FINAL; i++) {
         if (peixe[i].ativo) {
             const char *sprite = (peixe[i].dx < 0) ? "<>" : "><";
-            int cor = peixe[i].cor ? peixe[i].cor : cores_peixes[i % 4];
+            int cor = peixe[i].cor ? peixe[i].cor : cores_peixes[i % QUANTIDADE_TIPOS_PEIXE];
             desenhar_sprite(peixe[i].x, peixe[i].y, sprite, cor);
         }
     }
@@ -617,6 +627,7 @@ void desenhar_tiros(void) {
 
 void desenhar_hud(void) {
     desenhar_pontuacao(0, LINHA_HUD);
+    desenhar_vidas(COLUNA_VIDAS_HUD, LINHA_HUD);
     desenhar_barra_oxigenio(COLUNA_OXIGENIO_HUD, LINHA_HUD);
 }
 
@@ -886,13 +897,50 @@ void sistema_mergulhadores(void){
 
 
 /*--------------------4. SISTEMA DE PEIXES----------------*/
+int tipos_peixe_desbloqueados(void) {
+    int tipos = 1 + (player.pontos / PONTOS_PARA_NOVO_TIPO_PEIXE);
+
+    if (tipos > QUANTIDADE_TIPOS_PEIXE) return QUANTIDADE_TIPOS_PEIXE;
+    return tipos;
+}
+
+int cor_peixe_por_tipo(int tipo) {
+    switch (tipo) {
+        case 1: return COR_PEIXE_2;
+        case 2: return COR_PEIXE_3;
+        case 3: return COR_PEIXE_4;
+        default: return COR_PEIXE_1;
+    }
+}
+
+int sortear_cor_peixe(void) {
+    int tipos = tipos_peixe_desbloqueados();
+    int tipo = rand() % tipos;
+
+    return cor_peixe_por_tipo(tipo);
+}
+
+int passos_peixe_no_frame(int cor) {
+    switch (cor) {
+        case COR_PEIXE_2:
+            return 1;
+        case COR_PEIXE_3:
+            return (frame % 2) ? 2 : 1;
+        case COR_PEIXE_4:
+            return 2;
+        case COR_PEIXE_1:
+        default:
+            return (frame % 2) ? 1 : 0;
+    }
+}
+
 void gerar_peixes (void) {
     for (int  i = 0; i < MAX_PEIXES_FINAL; i++)
     {
         if (!peixe[i].ativo)
         {
             peixe[i].ativo=1;
-            peixe[i].cor= COR_PEIXE_1; 
+            peixe[i].cor= sortear_cor_peixe();
             
             if(rand()%2==0){
                 peixe[i].x=0; //spawn esquerda
@@ -923,7 +971,9 @@ void gerar_peixes (void) {
 void mover_peixes(void){
     for (int  i = 0; i < MAX_PEIXES_FINAL; i++){
         if(peixe[i].ativo){
-            if(frame % 2){
+            int passos = passos_peixe_no_frame(peixe[i].cor);
+
+            for (int passo = 0; passo < passos && peixe[i].ativo; passo++) {
                 peixe[i].x+=peixe[i].dx;
                 if(peixe[i].x<0 || peixe[i].x>=LARGURA){
                     peixe[i].ativo=0;
@@ -1049,9 +1099,16 @@ void sistema_sub_inimigos(){
     }
 }
 /*--------------------------12. SISTEMA DE RESET---------------------*/
-void player_perde_vida(){
+void player_perde_vida(void){
+    if (game_over) return;
+
     player.vidas -= 1;
-    if (player.vidas < 0){game_over = 1;}
+    if (player.vidas <= 0){
+        player.vidas = 0;
+        game_over = 1;
+        return;
+    }
+
     player.x = 38;
     player.y = 0;
     inicializar_oxigenio();  // Reseta oxigênio e contador_oxigenio
