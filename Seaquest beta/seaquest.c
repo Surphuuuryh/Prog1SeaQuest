@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-
+ 
 #ifdef _WIN32
     #include <windows.h>
     #include <conio.h>
@@ -11,12 +11,12 @@
     #include <unistd.h>
     #include <termios.h>
 #endif
-
+ 
 /* ----------------------------- Configuracao ----------------------------- */
 #define LARGURA        80      /*o limite para a largura é de 80 colunas*/ 
 #define ALTURA         20      /*o limite para a altura é de 24 linhas*/
 #define DELAY          90      /*velocidade do jogo*/
-
+ 
 #define COR_PADRAO               220 /*Ouro1*/
 #define COR_SUBMARINO_PLAYER     220 /*Ouro1*/
 #define COR_AGUA                 20  /*azul3*/
@@ -30,7 +30,7 @@
 #define COR_PEIXE_3              170 /*orquídea*/
 #define COR_PEIXE_4              166 /*laranja escuro3*/
 #define COR_SUPERFICIE  69        /*cornflowerBlue*/
-
+ 
 #define MAX_MERGULHADORES                6
 #define MAX_PEIXES_INICIAL               5
 #define MAX_SUBMARINOS_INIMIGOS_INICIAL  0
@@ -58,7 +58,7 @@
 #define COLUNA_VIDAS_HUD                 41
 #define COLUNA_OXIGENIO_HUD              50
 #define COR_FUNDO_HUD 0
-
+ 
 #define ALTURA_SPAWN_1                      4
 #define ALTURA_SPAWN_12                     6
 #define ALTURA_SPAWN_2                      8
@@ -68,13 +68,13 @@
 #define ALTURA_SPAWN_4                      16
 #define ALTURA_SPAWN_NAVIO                  18
 #define ALTURA_DE_TODOS_PERSONAGENS         1
-
+ 
 #define LARGURA_SUBMARINO    4
 #define LARGURA_SUB_INIMIGO  2
 #define LARGURA_PEIXE        2
 #define LARGURA_MERGULHADOR  5
 #define LARGURA_NAVIO        2
-
+ 
 #define DELAY_PEIXE 40
 #define DELAY_SUB_INIMIGO 60
 #define DELAY_TIRO_INIMIGO 40
@@ -85,12 +85,12 @@
 #else
     #define PREF "/tmp/"
 #endif
-
+ 
 //Comando de áudio caso não seja windows.
 #ifndef _WIN32
 char audio_player[80] = "";
 #endif
-
+ 
 //Nome dos .wav.
 #define WAV_COLETA       PREF "sq_coleta.wav"
 #define WAV_RESGATE      PREF "sq_resgate.wav"
@@ -99,34 +99,34 @@ char audio_player[80] = "";
 #define WAV_PONTUOU      PREF "sq_pontuou.wav"
 #define WAV_TIRO_INIMIGO PREF "sq_tiro_inimigo.wav"
 #define WAV_TIRO         PREF "sq_tiro.wav"
-
+ 
 //Byterate dos áudios.
 #define TAXA 11025
-
+ 
 const wchar_t *MERGULHADOR1[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"O<-<"};
-
+ 
 const wchar_t *MERGULHADOR2[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"O>-<"};
-
+ 
 const wchar_t *MERGULHADOR3[ALTURA_DE_TODOS_PERSONAGENS] = {
     L">->O"};
-
+ 
 const wchar_t *MERGULHADOR4[ALTURA_DE_TODOS_PERSONAGENS] = {
     L">-<O"};
-
+ 
 const wchar_t *PEIXE1[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"><((>"};
-
+ 
 const wchar_t *PEIXE2[ALTURA_DE_TODOS_PERSONAGENS] = {
     L">o((>"};
-
+ 
 const wchar_t *PEIXE3[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"<))><"};
-
+ 
 const wchar_t *PEIXE4[ALTURA_DE_TODOS_PERSONAGENS] = {
     L"<))o<"};
-
+ 
 /* ------------------------------ Estruturas ------------------------------ */
 typedef struct { int x, y, vidas, oxigenio, mergulhadores, pontos, cor; } Submarino_player;
 typedef struct { int x, y, dx, tempo_recarga, cor, ativo; } Submarino_inimigo;
@@ -135,16 +135,18 @@ typedef struct { int x, y, dx, cor, ativo; } Mergulhador;
 typedef struct { int x, y, dx, cor, ativo; } Navio;
 typedef struct { int x, y, dx, cor, ativo, dono;} Tiro;
 typedef struct { int freq, ms;} Nota;
-
-
+ 
+ 
 Submarino_player player = {(LARGURA - LARGURA_SUBMARINO) / 2, 0, 3, TEMPO_MAXIMO_OXIGENIO, 0, 0, COR_SUBMARINO_PLAYER};
 Submarino_inimigo submarino_inimigo[12];
 Peixe peixe[12];
-Mergulhador mergulhador[3];
+Mergulhador mergulhador[MAX_MERGULHADORES];
 Navio navio;
 Tiro tiros[MAX_TIROS];
-
-
+ 
+// ajeitar chamar func antes
+void player_perde_vida(void);
+ 
 int score;
 int velocidade_player;
 int velocidade_inimigos;
@@ -157,7 +159,6 @@ int ativo;
 int direcao;
 int recorde = 0;
 int contador_oxigenio = 0;
-char audio_player[80] = "";
 char tela[ALTURA][LARGURA];
 int fgc[ALTURA][LARGURA];
 char saida[ALTURA * LARGURA * 24 + 1024];
@@ -168,7 +169,7 @@ int delay_tiro_inimigo2 = 0;
 #ifdef _WIN32
 void player_perde_vida(void);
 void restaurar_terminal(void) { printf("\033[?25h\033[0m"); fflush(stdout); }
-
+ 
 void preparar_terminal(void) {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD modo = 0;
@@ -176,21 +177,21 @@ void preparar_terminal(void) {
     SetConsoleMode(h, modo | 0x0004 /* ENABLE_VIRTUAL_TERMINAL_PROCESSING */);
     printf("\033[2J\033[?25l");
     atexit(restaurar_terminal);
-
+ 
 }
 int  ler_tecla(void) { return _kbhit() ? _getch() : -1; }
 void dormir(int ms)  { Sleep(ms); }
-
+ 
 #else  /* Linux / macOS */
-
+ 
 static struct termios termo_original;
-
+ 
 void restaurar_terminal(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &termo_original);
     printf("\033[?25h\033[0m");
     fflush(stdout);
 }
-
+ 
 void preparar_terminal(void) {
     tcgetattr(STDIN_FILENO, &termo_original);
     struct termios cru = termo_original;
@@ -201,61 +202,61 @@ void preparar_terminal(void) {
     printf("\033[2J\033[?25l");
     atexit(restaurar_terminal);
 }
-
+ 
 int ler_tecla(void) {
     unsigned char c;
     return (read(STDIN_FILENO, &c, 1) == 1) ? c : -1;
 }
-
+ 
 void dormir(int ms) { usleep(ms * 1000); }
-
+ 
 #endif
 /*----------------------helpers-------------------------*/
 void por(int x, int y, char c, int c_cor) {
     if (x < 0 || x >= LARGURA || y < 0 || y >= ALTURA) return;
     tela[y][x] = c;
     fgc[y][x]  = c_cor;}
-
+ 
 void por_texto(int x, int y, const char *texto, int c_cor) {
     for (int i = 0; texto[i] != '\0'; i++) {
         por(x + i, y, texto[i], c_cor);
     }
 }
-
+ 
 /*------------------------7. SISTEMA DE ÁUDIO-----------------------*/
-
+ 
 void escreve_wav(const char *path, const unsigned char *dados, int n) {
     FILE *f = fopen(path, "wb");
     if (!f) return;
-
+ 
     int taxa = TAXA, byterate = TAXA, sub1 = 16, datalen = n, riff = 36 + n;
     short fmt = 1, canais = 1, blockalign = 1, bits = 8;
-
+ 
     fwrite("RIFF", 1, 4, f);
     fwrite(&riff, 4, 1, f);
     fwrite("WAVE", 1, 4, f);
-
+ 
     fwrite("fmt ", 1, 4, f); fwrite(&sub1, 4, 1, f);
     fwrite(&fmt, 2, 1, f);  fwrite(&canais, 2, 1, f);
     fwrite(&taxa, 4, 1, f); fwrite(&byterate, 4, 1, f);
     fwrite(&blockalign, 2, 1, f); fwrite(&bits, 2, 1, f);
-
+ 
     fwrite("data", 1, 4, f); fwrite(&datalen, 4, 1, f);
     fwrite(dados, 1, n, f);
-
+ 
     fclose(f);
 }
-
+ 
 void gera_som(const char *path, const Nota *ns, int qtd) {
     static unsigned char buf[TAXA * 2];
     int n = 0;
-    
+ 
     for (int i = 0; i < qtd; i++) {
         int amostras = ns[i].ms * TAXA / 1000;
         int meio = ns[i].freq > 0 ? (TAXA / ns[i].freq) / 2 + 1 : 1;
-        
+ 
         for (int s = 0; s < amostras && n < (int) sizeof(buf); s++, n++) {
-
+ 
             if (ns[i].freq == 0) {
                 buf[n] = 128;
             }
@@ -269,21 +270,21 @@ void gera_som(const char *path, const Nota *ns, int qtd) {
             }
         }
     }
-    
+ 
     escreve_wav(path, buf, n);
 }
-
+ 
 void montar_sons(void) {
     Nota Tiro_Inimigo[] = {
         {1467, 28}, {1266, 28}, {999, 15}, {707, 7}, {707, 8}
     };
     gera_som(WAV_TIRO_INIMIGO, Tiro_Inimigo, 5);
-
+ 
     Nota Pontuou[] = {
         {784, 35}, {1046, 50}, {1318, 55}
     };
     gera_som(WAV_PONTUOU, Pontuou, 3);
-
+ 
     Nota Dano[] = {
         {2196, 6}, {302, 6}, {1777, 6}, {452, 6}, {2006, 6},
         {351, 6}, {1706, 6}, {497, 6}, {1512, 6}, {688, 6},
@@ -292,7 +293,7 @@ void montar_sons(void) {
         {559, 20}
     };
     gera_som(WAV_DANO, Dano, 21);
-
+ 
     Nota Morte[] = {
         {2204, 10}, {312, 10}, {1805, 10}, {456, 10}, {2002, 10},
         {353, 10}, {1701, 10}, {505, 10}, {1501, 10}, {707, 10},
@@ -301,41 +302,41 @@ void montar_sons(void) {
         {1404, 45}, {1552, 50}, {1711, 55}, {1858, 60}
     };
     gera_som(WAV_MORTE, Morte, 24);
-
+ 
     Nota Resgate[] = {
         {523, 70}, {659, 70}, {784, 70}, {1046, 90}, {1318, 90},
         {1046, 70}, {1568, 120}, {1766, 120}, {2093, 350}
     };
     gera_som(WAV_RESGATE, Resgate, 9);
-
+ 
     Nota Coleta[] = {
         {523, 10}, {659, 10}, {784, 10}, {1046, 15}, {1318, 15},
         {1046, 10}, {1568, 20}, {1760, 20}, {2093, 45}
     };
     gera_som(WAV_COLETA, Coleta, 9);
-
+ 
     Nota Tiro[] = {
         {1467, 18}, {1266, 18}, {999, 18}, {707, 18}
     };
     gera_som(WAV_TIRO, Tiro, 4);
 }
-
+ 
 #ifndef _WIN32
 void detecta_player(void) {
     const char *bin[]  = {
         "paplay", "aplay", "play", "ffplay"
     };
-
+ 
     const char *tmpl[] = {
         "paplay", "aplay -q -N", "play -q",             
         "ffplay -nodisp -autoexit -loglevel quiet"
     };
-
+ 
     for (int i = 0; i < 4; i++) {
         char chk[64];
-
+ 
         snprintf(chk, sizeof chk, "command -v %s >/dev/null 2>&1", bin[i]);
-
+ 
         if (system(chk) == 0) {
             snprintf(audio_player, sizeof audio_player, "%s", tmpl[i]);
             return;
@@ -344,7 +345,7 @@ void detecta_player(void) {
     som_ligado = 0;
 }
 #endif
-
+ 
 void toca(const char *arq) {
     if (!som_ligado) return;
 #ifdef _WIN32
@@ -356,166 +357,171 @@ void toca(const char *arq) {
     system(cmd);
 #endif
 }
-
+ 
 /*------------------------6. SISTEMA DE PONTUACAO---------------------*/
-
+ 
 void sincronizar_pontuacao(void) {
     score = player.pontos;
     if (player.pontos > recorde) {
         recorde = player.pontos;
     }
 }
-
+ 
 void inicializar_pontuacao(void) {
     player.pontos = 0;
     score = 0;
 }
-
+ 
 void adicionar_pontos(int pontos) {
     if (pontos <= 0 || game_over) return;
-
+ 
     player.pontos += pontos;
     sincronizar_pontuacao();
 }
-
+ 
 int tiro_acertou_alvo(Tiro *tiro, int alvo_x, int alvo_y, int largura_alvo) {
     return tiro->ativo &&
            tiro->y == alvo_y &&
            tiro->x >= alvo_x &&
            tiro->x < alvo_x + largura_alvo;
 }
-
+ 
 int player_colidiu_com_alvo(int alvo_x, int alvo_y, int largura_alvo) {
     int player_fim = player.x + LARGURA_SUBMARINO;
     int alvo_fim = alvo_x + largura_alvo;
-
+ 
     return player.y == alvo_y && player.x < alvo_fim && player_fim > alvo_x;
 }
-
+ 
 void pontuar_peixe_abatido(int indice) {
     peixe[indice].ativo = 0;
     adicionar_pontos(PONTOS_PEIXE_ABATIDO);
+    toca(WAV_PONTUOU);
 }
-
+ 
 void pontuar_submarino_abatido(int indice) {
     submarino_inimigo[indice].ativo = 0;
     adicionar_pontos(PONTOS_SUBMARINO_ABATIDO);
+    toca(WAV_PONTUOU);
 }
-
+ 
 void pontuar_navio_abatido(void) {
     navio.ativo = 0;
     adicionar_pontos(PONTOS_NAVIO_ABATIDO);
+    toca(WAV_PONTUOU);
 }
-
+ 
 void colisoes_resgate_mergulhadores(void) {
     if (player.mergulhadores >= MAX_MERGULHADORES) return;
-
+ 
     for (int i = 0; i < MAX_MERGULHADORES; i++) {
         if (mergulhador[i].ativo &&
             player_colidiu_com_alvo(mergulhador[i].x, mergulhador[i].y, LARGURA_MERGULHADOR)) {
             mergulhador[i].ativo = 0;
             player.mergulhadores++;
             adicionar_pontos(PONTOS_MERGULHADOR_RESGATADO);
-
+            toca(WAV_COLETA);
+ 
             if (player.mergulhadores >= MAX_MERGULHADORES) {
                 break;
             }
         }
     }
 }
-
+ 
 void entregar_mergulhadores_na_superficie(void) {
     int pontos_entrega;
-
+ 
     if (player.y > 0 || player.mergulhadores <= 0) return;
-
+ 
     pontos_entrega = player.mergulhadores * PONTOS_MERGULHADOR_ENTREGUE;
     if (player.mergulhadores == MAX_MERGULHADORES) {
         pontos_entrega += BONUS_MERGULHADORES_COMPLETO;
     }
-
+ 
     player.mergulhadores = 0;
     adicionar_pontos(pontos_entrega);
+    toca(WAV_RESGATE);
 }
-
+ 
 void desenhar_pontuacao(int x, int y) {
     char texto_pontuacao[64];
-
+ 
     sprintf(texto_pontuacao, "Pontos: %05d  Recorde: %05d  Merg: %d/%d",
             player.pontos, recorde, player.mergulhadores, MAX_MERGULHADORES);
     por_texto(x, y, texto_pontuacao, COR_PADRAO);
 }
-
+ 
 void desenhar_vidas(int x, int y) {
     char texto_vidas[12];
-
+ 
     sprintf(texto_vidas, "Vidas:%d", player.vidas);
     por_texto(x, y, texto_vidas, COR_PADRAO);
 }
-
+ 
 /*------------------------2. SISTEMA DE OXIGENIO---------------------*/
-
+ 
 int limitar_oxigenio(int valor) {
     if (valor < 0) return 0;
     if (valor > TEMPO_MAXIMO_OXIGENIO) return TEMPO_MAXIMO_OXIGENIO;
     return valor;
 }
-
+ 
 int submarino_esta_na_superficie(void) {
     return player.y <= 0;
 }
-
+ 
 int cor_oxigenio_atual(void) {
     if (player.oxigenio <= TEMPO_MAXIMO_OXIGENIO / 4) return COR_OXIGENIO_BAIXO;
     if (player.oxigenio <= TEMPO_MAXIMO_OXIGENIO / 2) return COR_OXIGENIO_MEDIO;
     return COR_OXIGENIO_CHEIO;
 }
-
+ 
 void inicializar_oxigenio(void) {
     player.oxigenio = TEMPO_MAXIMO_OXIGENIO;
     contador_oxigenio = 0;
 }
-
+ 
 void recarregar_oxigenio_na_superficie(void) {
     if (submarino_esta_na_superficie()) {
         inicializar_oxigenio();
         entregar_mergulhadores_na_superficie();
     }
 }
-
+ 
 void encerrar_jogo_por_falta_de_oxigenio(void) {
     player.vidas = 0;
     player.oxigenio = 0;
     game_over = 1;
 }
-
+ 
 void atualizar_oxigenio(void) {
     if (game_over || aguardando_comecar) return;
-
+ 
     if (submarino_esta_na_superficie()) {
         recarregar_oxigenio_na_superficie();
         return;
     }
-
+ 
     contador_oxigenio++;
     if (contador_oxigenio < FRAMES_PARA_ATUALIZAR_OXIGENIO) return;
-
+ 
     contador_oxigenio = 0;
     player.oxigenio = limitar_oxigenio(player.oxigenio - 1);
-
+ 
     if (player.oxigenio <= 0) {
         encerrar_jogo_por_falta_de_oxigenio();
     }
 }
-
+ 
 void desenhar_barra_oxigenio(int x, int y) {
     char texto_oxigenio[8];
     int oxigenio = limitar_oxigenio(player.oxigenio);
     int preenchidos = (oxigenio * LARGURA_BARRA_OXIGENIO) / TEMPO_MAXIMO_OXIGENIO;
     int cor_barra = cor_oxigenio_atual();
-
+ 
     por_texto(x, y, "O2 [", COR_PADRAO);
-
+ 
     for (int i = 0; i < LARGURA_BARRA_OXIGENIO; i++) {
         if (i < preenchidos) {
             por(x + 4 + i, y, '#', cor_barra);
@@ -524,14 +530,14 @@ void desenhar_barra_oxigenio(int x, int y) {
             por(x + 4 + i, y, '.', COR_OXIGENIO_VAZIO);
         }
     }
-
+ 
     por(x + 4 + LARGURA_BARRA_OXIGENIO, y, ']', COR_PADRAO);
     sprintf(texto_oxigenio, " %02d", oxigenio);
     por_texto(x + 6 + LARGURA_BARRA_OXIGENIO, y, texto_oxigenio, cor_barra);
 }
-
+ 
 /*------------------------11. SISTEMA DE RENDERIZACAO---------------------*/
-
+ 
 void limpar_tela_buffer(void) {
     for (int y = 0; y < ALTURA; y++) {
         for (int x = 0; x < LARGURA; x++) {
@@ -540,44 +546,44 @@ void limpar_tela_buffer(void) {
         }
     }
 }
-
+ 
 void desenhar_sprite(int x, int y, const char *sprite, int c_cor) {
     for (int i = 0; sprite[i] != '\0'; i++) {
         por(x + i, y, sprite[i], c_cor);
     }
 }
-
+ 
 void desenhar_texto_centralizado(int y, const char *texto, int c_cor) {
     int tamanho = (int)strlen(texto);
     int x = (LARGURA - tamanho) / 2;
-
+ 
     if (x < 0) x = 0;
     por_texto(x, y, texto, c_cor);
 }
-
+ 
 void desenhar_fundo(void) {
     for (int x = 0; x < LARGURA; x++) {
         por(x, 0, '~', COR_AGUA);
         por(x, LINHA_AREIA, '.', COR_AREIA);
         por(x, LINHA_HUD, ' ', COR_PADRAO);
     }
-
+ 
     for (int x = 4; x < LARGURA; x += 13) {
         por(x, LINHA_AREIA - 1, '|', COR_ALGAS);
         por(x, LINHA_AREIA - 2, '\'', COR_ALGAS);
     }
 }
-
+ 
 void desenhar_player(void) {
     const char *sprite = (direcao < 0) ? "<o==" : "==o>";
     int cor = player.cor ? player.cor : COR_SUBMARINO_PLAYER;
-
+ 
     desenhar_sprite(player.x, player.y, sprite, cor);
 }
-
+ 
 void desenhar_peixes(void) {
     const int cores_peixes[QUANTIDADE_TIPOS_PEIXE] = {COR_PEIXE_1, COR_PEIXE_2, COR_PEIXE_3, COR_PEIXE_4};
-
+ 
     for (int i = 0; i < MAX_PEIXES_FINAL; i++) {
         if (peixe[i].ativo) {
             const char *sprite = (peixe[i].dx < 0) ? "<>" : "><";
@@ -586,7 +592,7 @@ void desenhar_peixes(void) {
         }
     }
 }
-
+ 
 void desenhar_submarinos_inimigos(void) {
     for (int i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++) {
         if (submarino_inimigo[i].ativo) {
@@ -596,7 +602,7 @@ void desenhar_submarinos_inimigos(void) {
         }
     }
 }
-
+ 
 void desenhar_mergulhadores(void) {
     for (int i = 0; i < MAX_MERGULHADORES; i++) {
         if (mergulhador[i].ativo) {
@@ -606,7 +612,7 @@ void desenhar_mergulhadores(void) {
         }
     }
 }
-
+ 
 void desenhar_navio(void) {
     if (navio.ativo) {
         const char *sprite = (navio.dx < 0) ? "<N" : "N>";
@@ -614,7 +620,7 @@ void desenhar_navio(void) {
         desenhar_sprite(navio.x, navio.y, sprite, cor);
     }
 }
-
+ 
 void desenhar_tiros(void) {
     for (int i = 0; i < MAX_TIROS; i++) {
         if (tiros[i].ativo) {
@@ -624,13 +630,13 @@ void desenhar_tiros(void) {
         }
     }
 }
-
+ 
 void desenhar_hud(void) {
     desenhar_pontuacao(0, LINHA_HUD);
     desenhar_vidas(COLUNA_VIDAS_HUD, LINHA_HUD);
     desenhar_barra_oxigenio(COLUNA_OXIGENIO_HUD, LINHA_HUD);
 }
-
+ 
 void desenhar_cena(void) {
     limpar_tela_buffer();
     desenhar_fundo();
@@ -641,12 +647,12 @@ void desenhar_cena(void) {
     desenhar_tiros();
     desenhar_player();
     desenhar_hud();
-
+ 
     if (game_over) {
         desenhar_texto_centralizado(ALTURA / 2, "GAME OVER", COR_OXIGENIO_BAIXO);
     }
 }
-
+ 
 void adicionar_saida_texto(int *pos, const char *texto) {
     while (texto[0] != '\0' && *pos < (int)sizeof(saida) - 1) {
         saida[*pos] = texto[0];
@@ -655,14 +661,14 @@ void adicionar_saida_texto(int *pos, const char *texto) {
     }
     saida[*pos] = '\0';
 }
-
+ 
 void adicionar_saida_cor(int *pos, int cor) {
     char escape_cor[24];
-
+ 
     sprintf(escape_cor, "\033[38;5;%dm", cor);
     adicionar_saida_texto(pos, escape_cor);
 }
-
+ 
 int cores_background(int y){
     if (y == 0) return COR_SUPERFICIE;
     if (y == 18) return COR_AREIA;
@@ -672,9 +678,9 @@ int cores_background(int y){
 void imprimir_tela(void) {
     int pos = 0;
     int cor_atual = -1;
-
+ 
     adicionar_saida_texto(&pos, "\033[H");
-
+ 
     for (int y = 0; y < ALTURA; y++) {
         pos += sprintf(&saida[pos], "\033[48;5;%dm", cores_background(y));
         for (int x = 0; x < LARGURA; x++) {
@@ -682,7 +688,7 @@ void imprimir_tela(void) {
                 cor_atual = fgc[y][x];
                 adicionar_saida_cor(&pos, cor_atual);
             }
-
+ 
             if (pos < (int)sizeof(saida) - 1) {
                 saida[pos++] = tela[y][x] ? tela[y][x] : ' ';
             }
@@ -692,20 +698,20 @@ void imprimir_tela(void) {
             saida[pos++] = '\n';
         }
     }
-
+ 
     adicionar_saida_texto(&pos, "\033[0m");
     saida[pos] = '\0';
     printf("%s", saida);
     fflush(stdout);
 }
-
+ 
 void renderizar_cena(void) {
     desenhar_cena();
     imprimir_tela();
 }
-
+ 
 /*------------------------6. SISTEMA DE TIROS---------------------*/
-
+ 
 void mover_tiros(){ // Concluído
     for (int i=0; i<MAX_TIROS; i++){
         if (tiros[i].ativo == 1){
@@ -716,7 +722,7 @@ void mover_tiros(){ // Concluído
 void colisoes_tiros(){
     for (int i=0; i<MAX_TIROS; i++){
         if (!tiros[i].ativo) continue;
-
+ 
         if (tiros[i].dono == 1){
             for (int c=0; c<MAX_PEIXES_FINAL; c++){
                 if (peixe[c].ativo && tiro_acertou_alvo(&tiros[i], peixe[c].x, peixe[c].y, LARGURA_PEIXE)){
@@ -725,9 +731,9 @@ void colisoes_tiros(){
                     break;
                 }
             }
-
+ 
             if (!tiros[i].ativo) continue;
-
+ 
             for (int c=0; c<MAX_SUBMARINOS_INIMIGOS_FINAL; c++){
                 if (submarino_inimigo[c].ativo &&
                     tiro_acertou_alvo(&tiros[i], submarino_inimigo[c].x, submarino_inimigo[c].y, LARGURA_SUB_INIMIGO)){
@@ -736,9 +742,9 @@ void colisoes_tiros(){
                     break;
                 }
             }
-
+ 
             if (!tiros[i].ativo) continue;
-
+ 
             if (navio.ativo && tiro_acertou_alvo(&tiros[i], navio.x, navio.y, LARGURA_NAVIO)){
                 tiros[i].ativo = 0;
                 pontuar_navio_abatido();
@@ -768,7 +774,7 @@ void mover_submarino(int dx, int dy){
     colisoes_resgate_mergulhadores();
     recarregar_oxigenio_na_superficie();
 }
-
+ 
 void disparar_tiro_player(){
     for (int i=0; i<MAX_TIROS; i++){
         if (tiros[i].ativo == 0){
@@ -794,14 +800,14 @@ void disparar_tiro_player(){
         }
     }
 }
-
+ 
 void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codigo)
 #ifdef _WIN32
     int cima = ((GetAsyncKeyState('W') & 0x8000) || (GetAsyncKeyState(VK_UP) & 0x8000));
     int baixo = ((GetAsyncKeyState('S') & 0x8000) || (GetAsyncKeyState(VK_DOWN) & 0x8000));
     int esquerda = ((GetAsyncKeyState('A') & 0x8000) || (GetAsyncKeyState(VK_LEFT) & 0x8000));
     int direita = ((GetAsyncKeyState('D') & 0x8000) || (GetAsyncKeyState(VK_RIGHT) & 0x8000));
-   
+ 
     if (cima){mover_submarino(0, -1);}
     if (baixo){mover_submarino(0, 1);}
     if (esquerda){mover_submarino(-1, 0); direcao = -1;}
@@ -810,7 +816,7 @@ void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codig
     if (GetAsyncKeyState(VK_ESCAPE) & 0x8000){game_over = 1;}
 #else
     int tecla = ler_tecla();
-
+ 
     if (tecla == 'w' || tecla == 'W'){mover_submarino(0, -1);}
     if (tecla == 's' || tecla == 'S'){mover_submarino(0, 1);}
     if (tecla == 'a' || tecla == 'A'){mover_submarino(-1, 0); direcao = -1;}
@@ -822,7 +828,7 @@ void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codig
     atualizar_oxigenio();
 }
 /*------------------------3. SISTEMA DE MERGULHADORES-----------------------*/
-
+ 
 void mover_mergulhadores(void)
 {
     for (int i = 0; i < MAX_MERGULHADORES; i++)
@@ -839,7 +845,7 @@ void mover_mergulhadores(void)
         }
     }
 }
-
+ 
 void mergulhadores_spawn_posicao(void)
 {
     if(frame % 60 !=0) return;
@@ -849,8 +855,8 @@ void mergulhadores_spawn_posicao(void)
         {
             mergulhador[i].ativo = 1;
             mergulhador[i].cor = COR_MERGULHADOR; // inicializa a cor do mergulhador
-
-
+ 
+ 
             if (rand() % 2 == 0)
             {
                 mergulhador[i].x = 0;  // spawn esquerda
@@ -861,27 +867,27 @@ void mergulhadores_spawn_posicao(void)
                 mergulhador[i].x = LARGURA - 6; // spawn direita
                 mergulhador[i].dx = -1;         // direção = esquerda
             }
-
-
+ 
+ 
             mergulhador[i].y = (rand() % 4) + 1; /*sorteia um valor de 1 a 4*/
             if (mergulhador[i].y == 1)
             { /*que indicará a altura do spawn mergulhador*/
                 mergulhador[i].y = ALTURA_SPAWN_1;
             }
-
-
+ 
+ 
             else if (mergulhador[i].y == 2)
             {
                 mergulhador[i].y = ALTURA_SPAWN_2;
             }
-
-
+ 
+ 
             else if (mergulhador[i].y == 3)
             {
                 mergulhador[i].y = ALTURA_SPAWN_3;
             }
-
-
+ 
+ 
             else
             {
                 mergulhador[i].y = ALTURA_SPAWN_4;
@@ -894,16 +900,16 @@ void sistema_mergulhadores(void){
     mergulhadores_spawn_posicao();
     mover_mergulhadores();
 }
-
-
+ 
+ 
 /*--------------------4. SISTEMA DE PEIXES----------------*/
 int tipos_peixe_desbloqueados(void) {
     int tipos = 1 + (player.pontos / PONTOS_PARA_NOVO_TIPO_PEIXE);
-
+ 
     if (tipos > QUANTIDADE_TIPOS_PEIXE) return QUANTIDADE_TIPOS_PEIXE;
     return tipos;
 }
-
+ 
 int cor_peixe_por_tipo(int tipo) {
     switch (tipo) {
         case 1: return COR_PEIXE_2;
@@ -912,14 +918,14 @@ int cor_peixe_por_tipo(int tipo) {
         default: return COR_PEIXE_1;
     }
 }
-
+ 
 int sortear_cor_peixe(void) {
     int tipos = tipos_peixe_desbloqueados();
     int tipo = rand() % tipos;
-
+ 
     return cor_peixe_por_tipo(tipo);
 }
-
+ 
 int passos_peixe_no_frame(int cor) {
     switch (cor) {
         case COR_PEIXE_2:
@@ -933,7 +939,7 @@ int passos_peixe_no_frame(int cor) {
             return (frame % 2) ? 1 : 0;
     }
 }
-
+ 
 void gerar_peixes (void) {
     for (int  i = 0; i < MAX_PEIXES_FINAL; i++)
     {
@@ -941,7 +947,7 @@ void gerar_peixes (void) {
         {
             peixe[i].ativo=1;
             peixe[i].cor= sortear_cor_peixe();
-            
+ 
             if(rand()%2==0){
                 peixe[i].x=0; //spawn esquerda
                 peixe[i].dx=1; //direção = direita
@@ -949,19 +955,19 @@ void gerar_peixes (void) {
             else{
                 peixe[i].x=LARGURA-LARGURA_PEIXE; //spawn direita
                 peixe[i].dx=-1; //direção = esquerda
-            
+ 
             }
-
+ 
             peixe[i].y= (rand() % 4)+1; 
             if(peixe[i].y==1){         
                 peixe[i].y = ALTURA_SPAWN_1;}
-
+ 
             else if(peixe[i].y==2){
                 peixe[i].y = ALTURA_SPAWN_2;}
-            
+ 
             else if(peixe[i].y==3){
                 peixe[i].y = ALTURA_SPAWN_3;}
-
+ 
             else{
                 peixe[i].y = ALTURA_SPAWN_4;}
             break;
@@ -972,7 +978,7 @@ void mover_peixes(void){
     for (int  i = 0; i < MAX_PEIXES_FINAL; i++){
         if(peixe[i].ativo){
             int passos = passos_peixe_no_frame(peixe[i].cor);
-
+ 
             for (int passo = 0; passo < passos && peixe[i].ativo; passo++) {
                 peixe[i].x+=peixe[i].dx;
                 if(peixe[i].x<0 || peixe[i].x>=LARGURA){
@@ -1006,7 +1012,7 @@ void gerar_submarinos_inimigos(){
         {
             submarino_inimigo[i].ativo=1;
             submarino_inimigo[i].cor= COR_SUBMARINO_INIMIGO; 
-            
+ 
             if(rand()%2==0){
                 submarino_inimigo[i].x=0; //spawn esquerda
                 submarino_inimigo[i].dx=1; //direção = direita
@@ -1014,16 +1020,16 @@ void gerar_submarinos_inimigos(){
             else{
                 submarino_inimigo[i].x=LARGURA-LARGURA_SUB_INIMIGO; //spawn direita
                 submarino_inimigo[i].dx=-1; //direção = esquerda
-            
+ 
             }
-
+ 
             submarino_inimigo[i].y= (rand() % 3)+1; 
             if(submarino_inimigo[i].y==1){         
                 submarino_inimigo[i].y = ALTURA_SPAWN_12;}
-
+ 
             else if(submarino_inimigo[i].y==2){
                 submarino_inimigo[i].y = ALTURA_SPAWN_22;}
-            
+ 
             else if(submarino_inimigo[i].y==3){
                 submarino_inimigo[i].y = ALTURA_SPAWN_32;}
             break;
@@ -1061,7 +1067,7 @@ void disparar_tiro_inimigo(){
                         tiros[i].dono = 0; // tiros.dono = 0 indica ser do inimigo, se for =1 quer dizer que é do player
                         tiros[i].cor = COR_PADRAO;
                         tiros[i].ativo = 1;
-                        toca(WAV_TIRO);
+                        toca(WAV_TIRO_INIMIGO);
                     }
                     else{
                         tiros[i].x = submarino_inimigo[c].x + LARGURA_SUB_INIMIGO - 1;
@@ -1070,7 +1076,7 @@ void disparar_tiro_inimigo(){
                         tiros[i].dono = 0;
                         tiros[i].cor = COR_PADRAO;
                         tiros[i].ativo = 1;
-                        toca(WAV_TIRO);
+                        toca(WAV_TIRO_INIMIGO);
                     }
                     break;
                 }
@@ -1101,14 +1107,16 @@ void sistema_sub_inimigos(){
 /*--------------------------12. SISTEMA DE RESET---------------------*/
 void player_perde_vida(void){
     if (game_over) return;
-
+ 
     player.vidas -= 1;
     if (player.vidas <= 0){
         player.vidas = 0;
         game_over = 1;
+        toca(WAV_MORTE);
         return;
     }
-
+ 
+    toca(WAV_DANO);
     player.x = 38;
     player.y = 0;
     inicializar_oxigenio();  // Reseta oxigênio e contador_oxigenio
@@ -1118,7 +1126,7 @@ void player_perde_vida(void){
     for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
     frame=0;
 }
-
+ 
 /*-----------------------MAIN-------------------------*/
 int main() {
     srand((unsigned int)time(NULL));
@@ -1128,12 +1136,12 @@ int main() {
     direcao = 1;
     aguardando_comecar = 0;
     game_over = 0;
-
+ 
     #ifndef _WIN32
     detecta_player();
     #endif
     montar_sons();
-
+ 
     while (!game_over) {
         sistema_peixes();
         sistema_mergulhadores();
@@ -1146,7 +1154,7 @@ int main() {
         dormir(DELAY);
         frame++;
     }
-
+ 
     renderizar_cena();
     return 0;
 }
