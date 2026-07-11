@@ -374,9 +374,16 @@ void inicializar_pontuacao(void) {
  
 void adicionar_pontos(int pontos) {
     if (pontos <= 0 || game_over) return;
- 
+
+    int marco_antes = player.pontos / 10000;
+
     player.pontos += pontos;
     sincronizar_pontuacao();
+
+    int marcos_depois = player.pontos / 10000;
+    if (marcos_depois > marco_antes) {
+        player.vidas++;
+        toca(WAV_RESGATE);}
 }
  
 int tiro_acertou_alvo(Tiro *tiro, int alvo_x, int alvo_y, int largura_alvo) {
@@ -770,7 +777,10 @@ void remover_tiros(){ // concluído
 /*------------------------1. CONTROLE DO JOGADOR------------------------------*/
 void mover_submarino(int dx, int dy){
     if (player.x + dx >= 0 && player.x + dx < LARGURA - LARGURA_SUBMARINO){player.x += dx;}
-    if (player.y + dy >= 0 && player.y + dy < LINHA_AREIA){player.y += dy;}
+    if (player.y + dy >= 0 && player.y + dy < LINHA_AREIA){
+        if(dy<0 && (player.y + dy == 0) && player.mergulhadores == 0){player_perde_vida();}
+        else{player.y += dy;}
+    }
     colisoes_resgate_mergulhadores();
     recarregar_oxigenio_na_superficie();
 }
