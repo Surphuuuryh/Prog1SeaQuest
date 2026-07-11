@@ -166,6 +166,14 @@ int tempo_peixe = 0;
 int tempo_sub_inimigo = 0;
 int delay_tiro_inimigo = 0;
 int delay_tiro_inimigo2 = 0;
+int tela_atual = 0;
+int opcao_menu = 0;
+
+enum {
+    TELA_MENU,
+    TELA_CONTROLES,
+    TELA_JOGO
+};
 #ifdef _WIN32
 void player_perde_vida(void);
 void restaurar_terminal(void) { printf("\033[?25h\033[0m"); fflush(stdout); }
@@ -566,6 +574,57 @@ void desenhar_texto_centralizado(int y, const char *texto, int c_cor) {
  
     if (x < 0) x = 0;
     por_texto(x, y, texto, c_cor);
+}
+
+void desenhar_fundo(void);
+void imprimir_tela(void);
+
+void desenhar_titulo_menu(void) {
+    const char *titulo[] = {
+        " _____  _____      _      _____  _   _  _____  _____  _____  _____ ",
+        "/  ___||  ___|    / \\    |  _  || | | ||  ___|/  ___||_   _||_   _|",
+        "\\ `--. | |__     / _ \\   | | | || | | || |__  \\ `--.   | |    | |  ",
+        " `--. \\|  __|   / ___ \\  | | | || | | ||  __|  `--. \\  | |    | |  ",
+        "/\\__/ /| |___  / /   \\ \\ \\ \\_/ /| |_| || |___ /\\__/ / _| |_   | |  ",
+        "\\____/ \\____/  \\/     \\/  \\___/  \\___/ \\____/ \\____/  \\___/   \\_/  "
+    };
+    int linhas = (int)(sizeof(titulo) / sizeof(titulo[0]));
+
+    for (int i = 0; i < linhas; i++) {
+        desenhar_texto_centralizado(1 + i, titulo[i], COR_PADRAO);
+    }
+
+    desenhar_texto_centralizado(8, "<o==        .       (<)>        O<-<        .", COR_MERGULHADOR);
+}
+
+void desenhar_opcao_menu(int y, int indice, const char *texto) {
+    char linha[32];
+    int selecionada = opcao_menu == indice;
+
+    sprintf(linha, "%s %s %s", selecionada ? ">" : " ", texto, selecionada ? "<" : " ");
+    desenhar_texto_centralizado(y, linha, selecionada ? COR_OXIGENIO_MEDIO : COR_PADRAO);
+}
+
+void desenhar_menu(void) {
+    limpar_tela_buffer();
+    desenhar_fundo();
+    desenhar_titulo_menu();
+    desenhar_opcao_menu(11, 0, "JOGAR");
+    desenhar_opcao_menu(13, 1, "CONTROLES");
+    desenhar_texto_centralizado(16, "Use W/S ou setas para escolher. ENTER confirma.", COR_PADRAO);
+    imprimir_tela();
+}
+
+void desenhar_controles(void) {
+    limpar_tela_buffer();
+    desenhar_fundo();
+    desenhar_titulo_menu();
+    desenhar_texto_centralizado(10, "CONTROLES", COR_OXIGENIO_MEDIO);
+    desenhar_texto_centralizado(12, "W/A/S/D ou setas: movimentar o submarino", COR_PADRAO);
+    desenhar_texto_centralizado(13, "ESPACO: atirar", COR_PADRAO);
+    desenhar_texto_centralizado(14, "ESC ou Q: sair do jogo", COR_PADRAO);
+    desenhar_texto_centralizado(17, "Pressione ENTER, ESC ou Q para voltar ao menu.", COR_PADRAO);
+    imprimir_tela();
 }
  
 void desenhar_fundo(void) {
@@ -1136,16 +1195,112 @@ void player_perde_vida(void){
     for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
     frame=0;
 }
+
+int ler_entrada_menu(int *cima, int *baixo, int *confirmar, int *voltar) {
+    int tecla = ler_tecla();
+
+    *cima = 0;
+    *baixo = 0;
+    *confirmar = 0;
+    *voltar = 0;
+
+    if (tecla == -1) return 0;
+
+#ifdef _WIN32
+    if (tecla == 0 || tecla == 224) {
+        int seta = ler_tecla();
+        if (seta == 72) *cima = 1;
+        if (seta == 80) *baixo = 1;
+        return 1;
+    }
+#else
+    if (tecla == 27) {
+        int abre_colchete = ler_tecla();
+        int seta = ler_tecla();
+
+        if (abre_colchete == '[') {
+            if (seta == 'A') *cima = 1;
+            if (seta == 'B') *baixo = 1;
+            return 1;
+        }
+
+        *voltar = 1;
+        return 1;
+    }
+#endif
+
+    if (tecla == 'w' || tecla == 'W') *cima = 1;
+    if (tecla == 's' || tecla == 'S') *baixo = 1;
+    if (tecla == '\r' || tecla == '\n') *confirmar = 1;
+    if (tecla == 27 || tecla == 'q' || tecla == 'Q') *voltar = 1;
+
+    return 1;
+}
+
+void iniciar_jogo(void) {
+    player.x = (LARGURA - LARGURA_SUBMARINO) / 2;
+    player.y = 0;
+    player.vidas = 3;
+    player.mergulhadores = 0;
+    player.cor = COR_SUBMARINO_PLAYER;
+
+    inicializar_pontuacao();
+    inicializar_oxigenio();
+
+    memset(submarino_inimigo, 0, sizeof(submarino_inimigo));
+    memset(peixe, 0, sizeof(peixe));
+    memset(mergulhador, 0, sizeof(mergulhador));
+    memset(tiros, 0, sizeof(tiros));
+    memset(&navio, 0, sizeof(navio));
+
+    direcao = 1;
+    aguardando_comecar = 0;
+    game_over = 0;
+    frame = 0;
+    tempo_peixe = 0;
+    tempo_sub_inimigo = 0;
+    delay_tiro_inimigo = 0;
+    delay_tiro_inimigo2 = 0;
+    tela_atual = TELA_JOGO;
+}
+
+void atualizar_menu(void) {
+    int cima, baixo, confirmar, voltar;
+
+    ler_entrada_menu(&cima, &baixo, &confirmar, &voltar);
+
+    if (cima || baixo) {
+        opcao_menu = 1 - opcao_menu;
+    }
+
+    if (confirmar) {
+        if (opcao_menu == 0) iniciar_jogo();
+        else tela_atual = TELA_CONTROLES;
+    }
+
+    if (voltar) {
+        game_over = 1;
+    }
+}
+
+void atualizar_controles(void) {
+    int cima, baixo, confirmar, voltar;
+
+    ler_entrada_menu(&cima, &baixo, &confirmar, &voltar);
+
+    if (confirmar || voltar) {
+        tela_atual = TELA_MENU;
+    }
+}
  
 /*-----------------------MAIN-------------------------*/
 int main() {
     srand((unsigned int)time(NULL));
     preparar_terminal();
-    inicializar_pontuacao();
-    inicializar_oxigenio();
     direcao = 1;
     aguardando_comecar = 0;
     game_over = 0;
+    tela_atual = TELA_MENU;
  
     #ifndef _WIN32
     detecta_player();
@@ -1153,18 +1308,30 @@ int main() {
     montar_sons();
  
     while (!game_over) {
-        sistema_peixes();
-        sistema_mergulhadores();
-        sistema_sub_inimigos();
-        comandos();
-        mover_tiros();
-        colisoes_tiros();
-        remover_tiros();
-        renderizar_cena();
+        if (tela_atual == TELA_MENU) {
+            atualizar_menu();
+            desenhar_menu();
+        }
+        else if (tela_atual == TELA_CONTROLES) {
+            atualizar_controles();
+            desenhar_controles();
+        }
+        else {
+            sistema_peixes();
+            sistema_mergulhadores();
+            sistema_sub_inimigos();
+            comandos();
+            mover_tiros();
+            colisoes_tiros();
+            remover_tiros();
+            renderizar_cena();
+        }
         dormir(DELAY);
         frame++;
     }
  
-    renderizar_cena();
+    if (tela_atual == TELA_JOGO) {
+        renderizar_cena();
+    }
     return 0;
 }
