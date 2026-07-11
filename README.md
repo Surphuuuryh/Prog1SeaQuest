@@ -1,5 +1,6 @@
 # SeaQuestC
-<img width="637" height="136" alt="image" src="https://github.com/user-attachments/assets/7601d119-3ec1-4f50-a591-e7d413416654" />
+<img width="637" height="137" alt="image" src="https://github.com/user-attachments/assets/5da24158-cd7a-49e0-adbd-ed75b54c0532" />
+
 
 Projeto em linguagem C inspirado no jogo **Seaquest**, do Atari 2600.
 O objetivo do projeto é implementar uma versão jogável no terminal, utilizando caracteres ASCII, cores ANSI e lógica básica de jogo, como movimentação do submarino, tiros, oxigênio, pontuação e resgate de mergulhadores.
