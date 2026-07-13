@@ -1176,40 +1176,38 @@ void sistema_sub_inimigos(){
 
 /*---------------------------SISTEMA NAVIO---------------------------*/
 void sistema_navio() {
-    static int tempo_navio = 0; // Contador interno para controlar a frequência
+    static int tempo_navio = 0; 
     tempo_navio++;
 
-    // 1. Lógica de Geração (Aparecimento)
-    // Tenta gerar um navio a cada 400 frames (aprox. 35 segundos)
     if (tempo_navio >= 400) {
         tempo_navio = 0;
         if (!navio.ativo) {
             navio.ativo = 1;
-            navio.cor = COR_NAVIO_INIMIGO; // Usa a cor cinza definida [5]
-            navio.y = ALTURA_SPAWN_NAVIO;  // Linha 18 do mar [6]
+            navio.cor = COR_NAVIO_INIMIGO; 
+            navio.y = ALTURA_SPAWN_NAVIO;  
 
-            // Sorteia se ele vem da esquerda ou da direita
+            
             if (rand() % 2 == 0) {
                 navio.x = 0;
-                navio.dx = 1; // Vai para a direita
+                navio.dx = 1; 
             } else {
                 navio.x = LARGURA - LARGURA_NAVIO;
-                navio.dx = -1; // Vai para a esquerda
+                navio.dx = -1; 
             }
         }
     }
     if (navio.ativo) {
-        // Move o navio apenas em frames pares para ele ser mais lento que os peixes
+       
         if (frame % 2 == 0) {
             navio.x += navio.dx;
         }
 
-        // Remove o navio se ele sair totalmente da tela [5]
+       
         if (navio.x < 0 || navio.x >= LARGURA) {
             navio.ativo = 0;
         }
 
-        // Deteta colisão: se o navio tocar no jogador, o jogador perde vida [7, 8]
+      
         if (player_colidiu_com_alvo(navio.x, navio.y, LARGURA_NAVIO)) {
             player_perde_vida();
         }
