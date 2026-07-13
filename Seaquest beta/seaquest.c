@@ -6,37 +6,37 @@
 #ifdef _WIN32
     #include <windows.h>
     #include <conio.h>
-    #include <mmsystem.h>   /* PlaySound (linkar com -lwinmm) */
+    #include <mmsystem.h>
 #else
     #include <unistd.h>
     #include <termios.h>
 #endif
  
-/* ----------------------------- Configuracao ----------------------------- */
-#define LARGURA        80      /*o limite para a largura é de 80 colunas*/ 
-#define ALTURA         20      /*o limite para a altura é de 24 linhas*/
-#define DELAY          90      /*velocidade do jogo*/
+
+#define LARGURA        80
+#define ALTURA         20
+#define DELAY          90
  
-#define COR_PADRAO               220 /*Ouro1*/
-#define COR_SUBMARINO_PLAYER     220 /*Ouro1*/
-#define COR_AGUA                 20  /*azul3*/
-#define COR_ALGAS                22  /*verde escuro*/
-#define COR_AREIA                102 /*cinza53*/
-#define COR_MERGULHADOR          86  /*Aquamarine1*/
-#define COR_SUBMARINO_INIMIGO    102 /*cinza53*/
-#define COR_NAVIO_INIMIGO        102 /*cinza53*/
-#define COR_PEIXE_1              2   /*verde(sistema)*/
-#define COR_PEIXE_2              3   /*aveitona(sistema)*/
-#define COR_PEIXE_3              170 /*orquídea*/
-#define COR_PEIXE_4              166 /*laranja escuro3*/
-#define COR_SUPERFICIE  69        /*cornflowerBlue*/
+#define COR_PADRAO               220
+#define COR_SUBMARINO_PLAYER     220
+#define COR_AGUA                 20
+#define COR_ALGAS                22
+#define COR_AREIA                102
+#define COR_MERGULHADOR          86
+#define COR_SUBMARINO_INIMIGO    102
+#define COR_NAVIO_INIMIGO        102
+#define COR_PEIXE_1              2
+#define COR_PEIXE_2              3
+#define COR_PEIXE_3              170
+#define COR_PEIXE_4              166
+#define COR_SUPERFICIE  69
  
 #define MAX_MERGULHADORES                6
 #define MAX_PEIXES_INICIAL               5
 #define MAX_SUBMARINOS_INIMIGOS_INICIAL  0
 #define MAX_SUBMARINOS_INIMIGOS_FINAL    6
 #define MAX_PEIXES_FINAL                 12
-#define MAX_INIMIGOS_FINAL               13 /*a soma peixes+submarinos+navio*/
+#define MAX_INIMIGOS_FINAL               13
 #define MAX_TIROS                        20
 #define TEMPO_MAXIMO_OXIGENIO            60
 #define FRAMES_PARA_ATUALIZAR_OXIGENIO   (1000 / DELAY)
@@ -79,19 +79,19 @@
 #define DELAY_SUB_INIMIGO 60
 #define DELAY_TIRO_INIMIGO 40
 #define DELAY_TIRO_INIMIGO2 50
-//Onde criar o .wav para os soms.
+
 #ifdef _WIN32
     #define PREF ""
 #else
     #define PREF "/tmp/"
 #endif
  
-//Comando de áudio caso não seja windows.
+
 #ifndef _WIN32
 char audio_player[80] = "";
 #endif
  
-//Nome dos .wav.
+
 #define WAV_COLETA       PREF "sq_coleta.wav"
 #define WAV_RESGATE      PREF "sq_resgate.wav"
 #define WAV_DANO         PREF "sq_dano.wav"
@@ -100,7 +100,7 @@ char audio_player[80] = "";
 #define WAV_TIRO_INIMIGO PREF "sq_tiro_inimigo.wav"
 #define WAV_TIRO         PREF "sq_tiro.wav"
  
-//Byterate dos áudios.
+
 #define TAXA 11025
 
 /* ------------------------------ Estruturas ------------------------------ */
@@ -120,7 +120,7 @@ Mergulhador mergulhador[MAX_MERGULHADORES];
 Navio navio;
 Tiro tiros[MAX_TIROS];
  
-// ajeitar chamar func antes
+
 void player_perde_vida(void);
  
 int score;
@@ -158,7 +158,7 @@ void preparar_terminal(void) {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD modo = 0;
     GetConsoleMode(h, &modo);
-    SetConsoleMode(h, modo | 0x0004 /* ENABLE_VIRTUAL_TERMINAL_PROCESSING */);
+    SetConsoleMode(h, modo | 0x0004);
     printf("\033[2J\033[?25l");
     atexit(restaurar_terminal);
  
@@ -166,7 +166,7 @@ void preparar_terminal(void) {
 int  ler_tecla(void) { return _kbhit() ? _getch() : -1; }
 void dormir(int ms)  { Sleep(ms); }
  
-#else  /* Linux / macOS */
+#else
  
 static struct termios termo_original;
  
@@ -195,7 +195,7 @@ int ler_tecla(void) {
 void dormir(int ms) { usleep(ms * 1000); }
  
 #endif
-/*----------------------helpers-------------------------*/
+
 void por(int x, int y, char c, int c_cor) {
     if (x < 0 || x >= LARGURA || y < 0 || y >= ALTURA) return;
     tela[y][x] = c;
@@ -207,7 +207,7 @@ void por_texto(int x, int y, const char *texto, int c_cor) {
     }
 }
  
-/*------------------------7. SISTEMA DE ÁUDIO-----------------------*/
+
  
 void escreve_wav(const char *path, const unsigned char *dados, int n) {
     FILE *f = fopen(path, "wb");
@@ -342,7 +342,7 @@ void toca(const char *arq) {
 #endif
 }
  
-/*------------------------6. SISTEMA DE PONTUACAO---------------------*/
+
  
 void sincronizar_pontuacao(void) {
     score = player.pontos;
@@ -450,7 +450,7 @@ void desenhar_vidas(int x, int y) {
     por_texto(x, y, texto_vidas, COR_PADRAO);
 }
  
-/*------------------------2. SISTEMA DE OXIGENIO---------------------*/
+
  
 int limitar_oxigenio(int valor) {
     if (valor < 0) return 0;
@@ -527,7 +527,7 @@ void desenhar_barra_oxigenio(int x, int y) {
     por_texto(x + 6 + LARGURA_BARRA_OXIGENIO, y, texto_oxigenio, cor_barra);
 }
  
-/*------------------------11. SISTEMA DE RENDERIZACAO---------------------*/
+
  
 void limpar_tela_buffer(void) {
     for (int y = 0; y < ALTURA; y++) {
@@ -752,9 +752,9 @@ void renderizar_cena(void) {
     imprimir_tela();
 }
  
-/*------------------------6. SISTEMA DE TIROS---------------------*/
+
  
-void mover_tiros(){ // Concluído
+void mover_tiros(){
     for (int i=0; i<MAX_TIROS; i++){
         if (tiros[i].ativo == 1){
             tiros[i].x += tiros[i].dx;
@@ -800,7 +800,7 @@ void colisoes_tiros(){
         }
     }
 }
-void remover_tiros(){ // concluído
+void remover_tiros(){
     for (int i=0; i<MAX_TIROS; i++){
         if (tiros[i].ativo){
             if (tiros[i].x <= 0 || tiros[i].x >= LARGURA){
@@ -809,7 +809,7 @@ void remover_tiros(){ // concluído
         }
     }
 }
-/*------------------------1. CONTROLE DO JOGADOR------------------------------*/
+
 void mover_submarino(int dx, int dy){
     if (player.x + dx >= 0 && player.x + dx < LARGURA - LARGURA_SUBMARINO){player.x += dx;}
     if (player.y + dy >= 0 && player.y + dy < LINHA_AREIA){
@@ -846,7 +846,7 @@ void disparar_tiro_player(){
     }
 }
  
-void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codigo)
+void comandos(){
 #ifdef _WIN32
     int cima = ((GetAsyncKeyState('W') & 0x8000) || (GetAsyncKeyState(VK_UP) & 0x8000));
     int baixo = ((GetAsyncKeyState('S') & 0x8000) || (GetAsyncKeyState(VK_DOWN) & 0x8000));
@@ -872,7 +872,7 @@ void comandos(){ // utilizamos ifs para não sair do terminal (quebraria o codig
     colisoes_resgate_mergulhadores();
     atualizar_oxigenio();
 }
-/*------------------------3. SISTEMA DE MERGULHADORES-----------------------*/
+
  
 void mover_mergulhadores(void)
 {
@@ -899,24 +899,24 @@ void mergulhadores_spawn_posicao(void)
         if (!mergulhador[i].ativo)
         {
             mergulhador[i].ativo = 1;
-            mergulhador[i].cor = COR_MERGULHADOR; // inicializa a cor do mergulhador
+            mergulhador[i].cor = COR_MERGULHADOR;
  
  
             if (rand() % 2 == 0)
             {
-                mergulhador[i].x = 0;  // spawn esquerda
-                mergulhador[i].dx = 1; // direção = direita
+                mergulhador[i].x = 0;
+                mergulhador[i].dx = 1;
             }
             else
             {
-                mergulhador[i].x = LARGURA - 6; // spawn direita
-                mergulhador[i].dx = -1;         // direção = esquerda
+                mergulhador[i].x = LARGURA - 6;
+                mergulhador[i].dx = -1;
             }
  
  
-            mergulhador[i].y = (rand() % 4) + 1; /*sorteia um valor de 1 a 4*/
+            mergulhador[i].y = (rand() % 4) + 1;
             if (mergulhador[i].y == 1)
-            { /*que indicará a altura do spawn mergulhador*/
+            {
                 mergulhador[i].y = ALTURA_SPAWN_1;
             }
  
@@ -947,7 +947,7 @@ void sistema_mergulhadores(void){
 }
  
  
-/*--------------------4. SISTEMA DE PEIXES----------------*/
+
 int tipos_peixe_desbloqueados(void) {
     int tipos = 1 + (player.pontos / PONTOS_PARA_NOVO_TIPO_PEIXE);
  
@@ -994,12 +994,12 @@ void gerar_peixes (void) {
             peixe[i].cor= sortear_cor_peixe();
  
             if(rand()%2==0){
-                peixe[i].x=0; //spawn esquerda
-                peixe[i].dx=1; //direção = direita
+                peixe[i].x=0;
+                peixe[i].dx=1;
             }
             else{
-                peixe[i].x=LARGURA-LARGURA_PEIXE; //spawn direita
-                peixe[i].dx=-1; //direção = esquerda
+                peixe[i].x=LARGURA-LARGURA_PEIXE;
+                peixe[i].dx=-1;
  
             }
  
@@ -1033,7 +1033,7 @@ void mover_peixes(void){
         }
     }
 }
-void colisoes_peixes(void) { // Falta colocar a função que remove uma vida e reseta a partida
+void colisoes_peixes(void) {
     for (int i = 0; i < MAX_PEIXES_FINAL; i++) {
         if (peixe[i].ativo && player_colidiu_com_alvo(peixe[i].x, peixe[i].y, LARGURA_PEIXE)) {
             player_perde_vida();
@@ -1049,7 +1049,7 @@ void sistema_peixes(){
     mover_peixes();
     colisoes_peixes();
 }
-/*-----------------5. SISTEMA DE SUBMARINOS INIMIGOS---------------------*/
+
 void gerar_submarinos_inimigos(){
      for (int  i = 0; i < MAX_PEIXES_FINAL; i++)
     {
@@ -1059,12 +1059,12 @@ void gerar_submarinos_inimigos(){
             submarino_inimigo[i].cor= COR_SUBMARINO_INIMIGO; 
  
             if(rand()%2==0){
-                submarino_inimigo[i].x=0; //spawn esquerda
-                submarino_inimigo[i].dx=1; //direção = direita
+                submarino_inimigo[i].x=0;
+                submarino_inimigo[i].dx=1;
             }
             else{
-                submarino_inimigo[i].x=LARGURA-LARGURA_SUB_INIMIGO; //spawn direita
-                submarino_inimigo[i].dx=-1; //direção = esquerda
+                submarino_inimigo[i].x=LARGURA-LARGURA_SUB_INIMIGO;
+                submarino_inimigo[i].dx=-1;
  
             }
  
@@ -1093,7 +1093,7 @@ void mover_submarinos_inimigos(){
         }
     }
 }
-void colisoes_sub_inimigos(void) { // Falta colocar a função que remove uma vida e reseta a partida
+void colisoes_sub_inimigos(void) {
     for (int i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++) {
         if (submarino_inimigo[i].ativo && player_colidiu_com_alvo(submarino_inimigo[i].x, submarino_inimigo[i].y, LARGURA_PEIXE)) {
             player_perde_vida();
@@ -1109,7 +1109,7 @@ void disparar_tiro_inimigo(){
                         tiros[i].x = submarino_inimigo[c].x;
                         tiros[i].y = submarino_inimigo[c].y;
                         tiros[i].dx = -1;
-                        tiros[i].dono = 0; // tiros.dono = 0 indica ser do inimigo, se for =1 quer dizer que é do player
+                        tiros[i].dono = 0;
                         tiros[i].cor = COR_PADRAO;
                         tiros[i].ativo = 1;
                         toca(WAV_TIRO_INIMIGO);
@@ -1150,7 +1150,7 @@ void sistema_sub_inimigos(){
     }
 }
 
-/*---------------------------SISTEMA NAVIO---------------------------*/
+
 void sistema_navio() {
     static int tempo_navio = 0; 
     tempo_navio++;
@@ -1189,7 +1189,7 @@ void sistema_navio() {
         }
     }
 }
-/*--------------------------12. SISTEMA DE RESET---------------------*/
+
 void player_perde_vida(void){
     if (game_over) return;
  
@@ -1204,8 +1204,8 @@ void player_perde_vida(void){
     toca(WAV_DANO);
     player.x = 38;
     player.y = 0;
-    inicializar_oxigenio();  // Reseta oxigênio e contador_oxigenio
-    for (int i = 0; i < MAX_MERGULHADORES; i++) mergulhador[i].ativo = 0; /*limpa todos os inimigos da tela*/
+    inicializar_oxigenio();
+    for (int i = 0; i < MAX_MERGULHADORES; i++) mergulhador[i].ativo = 0;
     for (int i = 0; i < MAX_PEIXES_FINAL; i++) peixe[i].ativo = 0;
     for (int i = 0; i < MAX_SUBMARINOS_INIMIGOS_FINAL; i++) submarino_inimigo[i].ativo = 0;
     for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
@@ -1309,7 +1309,7 @@ void atualizar_controles(void) {
     }
 }
  
-/*-----------------------MAIN-------------------------*/
+
 int main() {
     srand((unsigned int)time(NULL));
     preparar_terminal();
