@@ -102,31 +102,7 @@ char audio_player[80] = "";
  
 //Byterate dos áudios.
 #define TAXA 11025
- 
-const wchar_t *MERGULHADOR1[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L"O<-<"};
- 
-const wchar_t *MERGULHADOR2[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L"O>-<"};
- 
-const wchar_t *MERGULHADOR3[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L">->O"};
- 
-const wchar_t *MERGULHADOR4[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L">-<O"};
- 
-const wchar_t *PEIXE1[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L"><((>"};
- 
-const wchar_t *PEIXE2[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L">o((>"};
- 
-const wchar_t *PEIXE3[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L"<))><"};
- 
-const wchar_t *PEIXE4[ALTURA_DE_TODOS_PERSONAGENS] = {
-    L"<))o<"};
- 
+
 /* ------------------------------ Estruturas ------------------------------ */
 typedef struct { int x, y, vidas, oxigenio, mergulhadores, pontos, cor; } Submarino_player;
 typedef struct { int x, y, dx, tempo_recarga, cor, ativo; } Submarino_inimigo;
